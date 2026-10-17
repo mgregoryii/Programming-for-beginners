@@ -1,0 +1,173 @@
+Bug #: 1
+Type: Crash
+Line(s): 69-71
+Original: csv_file = open(csv_filename, newline="")
+          csv_reader = csv.DictReader(csv_file)
+          csv_file.close()
+Fixed: with open(csv_filename, newline="") as csv_file:
+            csv_reader = csv.DictReader(csv_file)
+Symptom: Closes the .csv file prior to it being read by the program
+Explanation: with open() keeps the file open while processing its rows.
+
+Bug #: 2
+Type: Logic
+Line(s): 138
+Original: while search_index <= len(student_records):
+Fixed: while search_index < len(student_records):
+Symptom: The <= allows search_index to equal the length of the list. List indexes start at 0, so this causes an IndexError: list index out of range.
+Explanation: Removing the = removes the IndexError
+
+Bug #: 3
+Type: Logic
+Line(s): 152
+Original:                print(f"  Student ID    : {found_student['Student_ID']}")
+Fixed:                print(f"  Student ID    : {found_student['StudentID']}")
+Symptom: KeyError
+Explanation: dictionary uses "StudentID", not "Student_ID"
+
+Bug #: 4
+Type: Subtle
+Line(s): 141
+Original: search_index = 0
+
+            while search_index <= len(student_records):
+                if student_records[search_index]["StudentID"].upper() == search_id:
+                    found_student = student_records[search_index]
+                    search_index = len(student_records)  - 1      # Force loop to end
+                else:
+                    search_index = search_index + 1
+
+Fixed: found_student = None
+
+        for current_student in student_records:
+            if current_student["StudentID"].upper() == search_id.upper():
+                found_student = current_student
+                break
+Symptom: Search loop does not stop correctly
+Explanation: <one or two sentences explaining why the fix works>
+
+Bug #: 5
+Type: Crash
+Line(s): 69
+Original:  with open(csv_filename, newline="") as csv_file:
+Fixed:  if menu_choice == "1":
+
+        csv_filename = input(
+            "Enter the CSV filename (e.g., students.csv): "
+        ).strip()
+
+        try:
+            with open(csv_filename, newline="") as csv_file:
+                csv_reader = csv.DictReader(csv_file)
+
+                required_columns = [
+                    "StudentID",
+                    "StudentName",
+                    "Major",
+                    "GPA",
+                    "TotalCredits"
+                ]
+
+                if not csv_reader.fieldnames or not all(
+                    column in csv_reader.fieldnames
+                    for column in required_columns
+                ):
+                    print("Error: CSV file has missing or incorrect headers.")
+
+                else:
+                    student_records.clear()
+
+                    for row in csv_reader:
+                        student_record = {
+                            "StudentID": row["StudentID"],
+                            "StudentName": row["StudentName"],
+                            "Major": row["Major"],
+                            "GPA": row["GPA"],
+                            "TotalCredits": row["TotalCredits"]
+                        }
+
+                        student_records.append(student_record)
+
+                    csv_loaded = True
+
+                    print()
+                    print(
+                        f"Success! {len(student_records)} student record(s) "
+                        f"loaded from '{csv_filename}'."
+                    )
+
+        except FileNotFoundError:
+            print("Error: CSV file not found.")
+
+        except PermissionError:
+            print("Error: You do not have permission to read this file.")
+
+        except (csv.Error, OSError) as error:
+            print(f"Error reading CSV file: {error}")
+
+Symptom: FileNotFound Error if the user types in a file that does not exist.
+Explanation: The try/except handles the error by causing the user's input to be handled safely causing the code to behave in a predictable manner.
+
+Bug #: 6
+Type: Subtle
+Line(s): 160
+Original:     elif menu_choice == 4:
+Fixed:     elif menu_choice == "4":
+Symptom: Exit option never works
+Explanation: Since input() returns a string, the condition never matches the user's entry "4"
+
+Bug #: 7
+Type: Logic
+Line(s): 135
+Original: row_number = 1
+Fixed: row_number = 1
+
+            for current_student in student_records:
+                print(
+                    f"{row_number:<5}"
+                    f"{current_student['StudentID']:<12}"
+                    f"{current_student['StudentName']:<22}"
+                    f"{current_student['Major']:<24}"
+                    f"{current_student['GPA']:<6}"
+                    f"{current_student['TotalCredits']}"
+                )
+                row_number += 1
+Symptom: The row number never increments
+Explanation: row_number is never increased, so every student displays as row 1 so adding row_number += 1 fixes this
+
+Bug #: 8
+Type: Subtle
+Line(s): 95, 96
+Original: for row in csv_reader:
+              student_record = {
+Fixed: for row in csv_reader:
+           if not all(row.get(column, "").strip() for column in required_columns):
+               print("Warning: Skipping a row with missing data.")
+               continue
+Symptom: CSV rows may contain missing values
+Explanation: Alerts the user that row data is missing input for students
+
+Bug #: 9
+Type: Logic
+Line(s): 83 - 87
+Original: if not csv_reader.fieldnames or not all(
+                    column in csv_reader.fieldnames
+                    for column in required_columns
+                ):
+                    print("Error: CSV file has missing or incorrect headers.")
+Fixed: csv_loaded = False
+       student_records.clear()
+Symptom: csv_loaded may remain incorrect
+Explanation: Placing the fixed before the try statement on line 71 discards previous records even if the new file cannot be opened.
+
+Bug #: 10
+Type: Subtle
+Line(s): 106
+Original: csv_loaded = True
+Fixed: if student_records:
+         csv_loaded = True
+       else:
+         csv_loaded = False
+         print("The CSV file contains no student records.")
+Symptom: An empty CSV file is treated as successfully loaded
+Explanation: Provides feedback to the user there are no student records in the file.
